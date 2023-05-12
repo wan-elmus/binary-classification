@@ -93,3 +93,14 @@ X_test = scaler.transform(X_test)
 selector = SelectKBest(f_classif, k=10)
 X_train = selector.fit_transform(X_train, y_train)
 X_test = selector.transform(X_test)
+
+with open('results.pickle', 'rb') as f:
+    results = pickle.load(f)
+
+# Print the best hyperparameters and corresponding score for SVM
+print("Best parameters for SVM:", results['SVM'].best_params_)
+print("Best score for SVM:", results['SVM'].best_score_)
+
+# Print the best hyperparameters and corresponding score for Random Forest
+print("Best parameters for Random Forest:", results['Random Forest'].best_params_)
+print("Best score for Random Forest:", results['Random Forest'].best_score_)
