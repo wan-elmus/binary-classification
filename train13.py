@@ -1,9 +1,8 @@
-
 import pandas as pd
 import numpy as np
 import csv
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 import pickle
@@ -14,49 +13,47 @@ from sklearn.feature_selection import SelectKBest, f_classif
 training1_df = pd.read_csv("training1.csv")
 training2_df = pd.read_csv("training2.csv")
 
+# Concatenate the training datasets
+training_df = pd.concat([training1_df, training2_df])
+
 # Load test data
 test_df = pd.read_csv("test.csv")
 
 # Handle missing values
-training2_df.fillna(training2_df.mean(), inplace=True)
+training_df.fillna(training_df.mean(), inplace=True)
 test_df.fillna(test_df.mean(), inplace=True)
 
 # Feature selection
-X_train1 = training1_df.iloc[:, 1:].values
-y_train1 = training1_df.iloc[:, 0].values
-
-X_train2 = training2_df.iloc[:, 1:].values
-y_train2 = training2_df.iloc[:, 0].values
+X = training_df.iloc[:, 1:].values
+y = training_df.iloc[:, 0].values
 
 X_test = test_df.iloc[:, 1:].values
 
 # Convert categorical variable into numerical 
-y_train2[y_train2==1.0] = 1
-y_train2[y_train2==0.0] = -1
+y[y==1.0] = 1
+y[y==0.0] = -1
 
 # Convert labels to binary values
-y_train1 = np.where(y_train1 >= 0.5, 1, 0)
-y_train2 = np.where(y_train2 >= 0.5, 1, 0)
+y = np.where(y >= 0.5, 1, 0)
 
-# Train logistic regression classifier on first dataset
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train logistic regression classifier
 lr = LogisticRegression(random_state=42, max_iter=1000)
-lr.fit(X_train1, y_train1)
-    
-# Handle missing values in second dataset
-X_train2[np.isnan(X_train2)] = np.nanmean(X_train2)
-y_train2[np.isnan(y_train2)] = np.nanmean(y_train2)
+lr.fit(X_train, y_train)
 
-# Evaluate performance on second dataset
-score = lr.score(X_train2, y_train2)
-print("Accuracy on second dataset:", score)
+# Evaluate performance on test dataset
+score = lr.score(X_test, y_test)
+print("Accuracy on test dataset:", score)
 
-### Find missing columns in both training datasets
+## Find missing columns in both training datasets
 missing_cols = set(training1_df.columns) | set(training2_df.columns) - set(test_df.columns)
 
 # Add missing columns to test dataset and set their values to 0
-for col in missing_cols:
-    test_df[col] = 0
+missing_cols_df = pd.DataFrame(0, index=np.arange(test_df.shape[0]), columns=list(missing_cols))
 
+test_df = pd.concat([test_df, missing_cols_df], axis=1)
 
 # Make predictions on test data using logistic regression
 test_preds = lr.predict(X_test)
@@ -80,7 +77,7 @@ results = {}
 for name, (classifier, params) in classifiers.items():
     print("Performing grid search and cross-validation for", name)
     clf = GridSearchCV(classifier, params, cv=5)
-    clf.fit(X_train1, y_train1)
+    clf.fit(X_train, y_train)
     results[name] = clf
 
 # Save results to a file
@@ -89,13 +86,10 @@ with open('results.pickle', 'wb') as f:
 
 # Scale the features
 scaler = StandardScaler()
-X_train1 = scaler.fit_transform(X_train1)
-X_train2 = scaler.transform(X_train2)
+X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
 # Select the top 10 features based on ANOVA F-value
 selector = SelectKBest(f_classif, k=10)
-X_train1 = selector.fit_transform(X_train1, y_train1)
-X_train2 = selector.transform(X_train2)
+X_train = selector.fit_transform(X_train, y_train)
 X_test = selector.transform(X_test)
-
