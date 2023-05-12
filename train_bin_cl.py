@@ -59,7 +59,7 @@ test_df = pd.concat([test_df, missing_cols_df], axis=1)
 test_preds = lr.predict(X_test)
 
 # Save test predictions to a file
-with open('test_predictions.csv', 'w', newline='') as file:
+with open('predictions.csv', 'w', newline='') as file:
     writer = csv.writer(file)
     writer.writerow(['Prediction'])
     for pred in test_preds:
